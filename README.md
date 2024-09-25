@@ -1,1 +1,66 @@
+from flask import Flask, request, jsonify
+import requests
+
+app = Flask(__name__)
+
+# Replace with your API keys
+GOOGLE_PLACES_API_KEY = 'your-google-places-api-key'
+LOCATION_API_KEY = 'your-location-service-api-key'
+
+# Get location details for a place using Google Places API
+def get_place_details(place_name, location):
+    url = f'https://maps.googleapis.com/maps/api/place/findplacefromtext/json'
+    params = {
+        'input': place_name,
+        'inputtype': 'textquery',
+        'fields': 'place_id,name,geometry',
+        'locationbias': f'point:{location["lat"]},{location["lng"]}',
+        'key': GOOGLE_PLACES_API_KEY
+    }
+    response = requests.get(url, params=params)
+    place_info = response.json()
+    return place_info
+
+# Estimate number of people based on location data (mock function for now)
+def estimate_people_in_place(place_id):
+    # Mock: In a real app, you'd integrate with a service to estimate people
+    # Here you can use something like a Mapbox API or similar service
+    # and get all users' geolocations who have opted in to be tracked.
+    mock_people_count = 200  # This would be dynamically calculated
+    return mock_people_count
+
+@app.route('/crowd_control', methods=['GET'])
+def crowd_control():
+    place_name = request.args.get('place_name')  # e.g. 'Walmart'
+    user_lat = request.args.get('lat')
+    user_lng = request.args.get('lng')
+
+    if not place_name or not user_lat or not user_lng:
+        return jsonify({'error': 'Invalid input parameters'})
+
+    # Step 1: Get place details
+    location = {'lat': user_lat, 'lng': user_lng}
+    place_details = get_place_details(place_name, location)
+
+    if not place_details or not place_details.get('candidates'):
+        return jsonify({'error': 'Place not found'})
+
+    place_info = place_details['candidates'][0]
+    place_id = place_info['place_id']
+    
+    # Step 2: Get estimate for people currently in place
+    people_estimate = estimate_people_in_place(place_id)
+
+    # Step 3: Respond with place capacity and people estimate
+    result = {
+        'place_name': place_info['name'],
+        'location': place_info['geometry']['location'],
+        'estimated_people': people_estimate,
+        'place_capacity': 'Data not available',  # Ideally from an API, or a mock value
+    }
+
+    return jsonify(result)
+
+if __name__ == '__main__':
+    app.run(debug=True)
 # Crowded
